@@ -21,8 +21,8 @@ const MOCK_NOVELS: Novel[] = [
     plays: 5430,
     publishedAt: new Date().toISOString(),
     characters: [
-       { id: 'c1', name: 'Detective Ray', color: '#3b82f6', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ray&backgroundColor=b6e3f4' },
-       { id: 'c2', name: 'Echo', color: '#ec4899', avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Echo&backgroundColor=ffdfbf' }
+       { id: 'c1', name: 'Detective Ray', color: '#3b82f6', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Ray&backgroundColor=b6e3f4', sprites: [] },
+       { id: 'c2', name: 'Echo', color: '#ec4899', avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Echo&backgroundColor=ffdfbf', sprites: [] }
     ],
     scenes: [
       {
@@ -50,8 +50,8 @@ const MOCK_NOVELS: Novel[] = [
     plays: 3200,
     publishedAt: new Date().toISOString(),
     characters: [
-      { id: 'c1', name: 'Elara', color: '#8b5cf6', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elara&style=circle' },
-      { id: 'c2', name: 'Kael', color: '#f43f5e', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kael&style=circle' }
+      { id: 'c1', name: 'Elara', color: '#8b5cf6', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elara&style=circle', sprites: [] },
+      { id: 'c2', name: 'Kael', color: '#f43f5e', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kael&style=circle', sprites: [] }
     ],
     scenes: [
       {
@@ -79,8 +79,8 @@ const MOCK_NOVELS: Novel[] = [
     plays: 8900,
     publishedAt: new Date().toISOString(),
     characters: [
-      { id: 'c1', name: 'Captain Vance', color: '#10b981', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Vance' },
-      { id: 'c2', name: 'A.I. Mother', color: '#ef4444', avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Mother' }
+      { id: 'c1', name: 'Captain Vance', color: '#10b981', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Vance', sprites: [] },
+      { id: 'c2', name: 'A.I. Mother', color: '#ef4444', avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Mother', sprites: [] }
     ],
     scenes: [
       {

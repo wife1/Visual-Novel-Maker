@@ -36,7 +36,7 @@ export const generateSceneDialogues = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -70,7 +70,7 @@ export const generateNovelIdeas = async (): Promise<string[]> => {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: "List 3 unique and catchy visual novel concepts/titles with a 1-sentence hook.",
       config: {
         responseMimeType: "application/json",

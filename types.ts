@@ -7,11 +7,18 @@ export interface User {
   createdNovels: string[];
 }
 
+export interface CharacterSprite {
+  id: string;
+  name: string;
+  url: string;
+}
+
 export interface Character {
   id: string;
   name: string;
   color: string; // Text color
   avatarUrl: string; // Default sprite
+  sprites: CharacterSprite[];
 }
 
 export interface Choice {
@@ -25,8 +32,10 @@ export interface Dialogue {
   characterId: string | null; // null for narrator
   text: string;
   expression?: string; // e.g., 'happy', 'sad'
-  audioUrl?: string; // Voice acting or SFX for this line
-  textEffect?: 'shake' | 'flash' | 'rainbow';
+  spriteId?: string; // Specific sprite to show
+  audioUrl?: string; // Voice acting
+  sfxUrl?: string; // Short sound effect
+  textEffect?: 'typewriter' | 'shake' | 'flash' | 'rainbow';
   choices?: Choice[]; // Optional branching paths
 }
 
@@ -36,9 +45,10 @@ export interface Scene {
   backgroundUrl: string;
   bgmUrl?: string; // Background music URL
   backgroundSize?: 'cover' | 'contain' | 'stretch';
-  backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
+  backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top left' | 'top right' | 'bottom left' | 'bottom right';
   transition?: 'fade' | 'flash' | 'slide' | 'zoom' | 'none'; // Effect when entering this scene
   themeOverride?: Partial<NovelTheme>; // Overrides global novel theme for this scene
+  directorNotes?: string; // Internal notes for the author
   dialogues: Dialogue[];
 }
 

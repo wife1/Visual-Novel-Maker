@@ -22,7 +22,8 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
 
   // Audio Refs
   const bgmRef = useRef<HTMLAudioElement | null>(null);
-  const sfxRef = useRef<HTMLAudioElement | null>(null);
+  const voiceRef = useRef<HTMLAudioElement | null>(null); // For dialogue voice (audioUrl)
+  const sfxRef = useRef<HTMLAudioElement | null>(null); // For sound effects (sfxUrl)
 
   const currentScene: Scene | undefined = novel.scenes[currentSceneIndex];
   const currentDialogue: Dialogue | undefined = currentScene?.dialogues[currentDialogueIndex];
@@ -33,6 +34,18 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
   };
 
   const activeCharacter = getCharacter(currentDialogue?.characterId || null);
+  
+  // Resolve Sprite URL
+  const getActiveSpriteUrl = () => {
+      if (!activeCharacter) return null;
+      if (currentDialogue?.spriteId) {
+          const sprite = activeCharacter.sprites?.find(s => s.id === currentDialogue.spriteId);
+          if (sprite) return sprite.url;
+      }
+      return activeCharacter.avatarUrl;
+  };
+
+  const activeSpriteUrl = getActiveSpriteUrl();
 
   // Typewriter Effect Logic
   useEffect(() => {
@@ -94,26 +107,44 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
     }
   }, [currentScene?.bgmUrl, currentScene?.id, isFinished]);
 
-  // Audio Logic: SFX/Voice
+  // Audio Logic: Voice (audioUrl)
   useEffect(() => {
-    // Stop any previously playing SFX
+    // Stop any previously playing Voice
+    if (voiceRef.current) {
+      voiceRef.current.pause();
+      voiceRef.current = null;
+    }
+
+    if (!isFinished && currentDialogue?.audioUrl) {
+      const audio = new Audio(currentDialogue.audioUrl);
+      audio.volume = 0.8; // Voices usually louder
+      audio.muted = isMuted;
+      audio.play().catch(e => console.warn("Voice autoplay blocked:", e));
+      voiceRef.current = audio;
+    }
+  }, [currentDialogue?.id, currentDialogue?.audioUrl, isFinished]);
+
+  // Audio Logic: SFX (sfxUrl)
+  useEffect(() => {
+    // Stop any previously playing SFX (optional, but good practice if short SFX overlap isn't desired between lines)
     if (sfxRef.current) {
       sfxRef.current.pause();
       sfxRef.current = null;
     }
 
-    if (!isFinished && currentDialogue?.audioUrl) {
-      const audio = new Audio(currentDialogue.audioUrl);
+    if (!isFinished && currentDialogue?.sfxUrl) {
+      const audio = new Audio(currentDialogue.sfxUrl);
       audio.volume = 0.5;
       audio.muted = isMuted;
       audio.play().catch(e => console.warn("SFX autoplay blocked:", e));
       sfxRef.current = audio;
     }
-  }, [currentDialogue?.id, currentDialogue?.audioUrl, isFinished]);
+  }, [currentDialogue?.id, currentDialogue?.sfxUrl, isFinished]);
 
   // Audio Logic: Mute Sync
   useEffect(() => {
     if (bgmRef.current) bgmRef.current.muted = isMuted;
+    if (voiceRef.current && !voiceRef.current.ended) voiceRef.current.muted = isMuted;
     if (sfxRef.current && !sfxRef.current.ended) sfxRef.current.muted = isMuted;
   }, [isMuted]);
 
@@ -123,6 +154,10 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
       if (bgmRef.current) {
         bgmRef.current.pause();
         bgmRef.current = null;
+      }
+      if (voiceRef.current) {
+        voiceRef.current.pause();
+        voiceRef.current = null;
       }
       if (sfxRef.current) {
         sfxRef.current.pause();
@@ -139,14 +174,12 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
   };
 
   const performSceneTransition = (nextIndex: number) => {
-    // Determine the transition effect for the *next* scene
     const nextScene = novel.scenes[nextIndex];
     const effect = nextScene.transition || 'fade';
 
     setIsTransitioning(true);
     
     let delay = 500;
-    // Faster switch for slide/zoom to allow animation to play
     if (effect === 'slide' || effect === 'zoom') {
         delay = 100;
     } else if (effect === 'none') {
@@ -157,7 +190,6 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
       setCurrentSceneIndex(nextIndex);
       setCurrentDialogueIndex(0);
       
-      // Brief delay before fading overlay out
       setTimeout(() => {
         setIsTransitioning(false);
       }, effect === 'none' ? 0 : 100);
@@ -167,14 +199,12 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
   const advance = () => {
     if (!currentScene || isTransitioning) return;
 
-    // Handle Typewriter skip
     if (isTyping && currentDialogue) {
         setDisplayedText(currentDialogue.text);
         setIsTyping(false);
         return;
     }
     
-    // Do not advance if there are choices pending
     if (currentDialogue?.choices && currentDialogue.choices.length > 0) {
         return;
     }
@@ -191,7 +221,6 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.code === 'Enter') {
-        // Prevent accidental advancement if choices are present
         if (currentDialogue?.choices && currentDialogue.choices.length > 0 && !isTyping) {
             return;
         }
@@ -206,13 +235,11 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
     const globalTheme = novel.theme;
     const sceneTheme = currentScene?.themeOverride;
     
-    // Prefer scene override, then global, then default
     const fontFamily = sceneTheme?.fontFamily || globalTheme?.fontFamily;
     const fontSize = sceneTheme?.fontSize || globalTheme?.fontSize;
 
     let classes = "";
     
-    // Font Family
     if (fontFamily === 'serif') classes += " font-serif";
     else if (fontFamily === 'mono') classes += " font-mono";
     else if (fontFamily === 'handwritten') classes += " font-handwritten";
@@ -221,10 +248,9 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
     else if (fontFamily === 'readable') classes += " font-readable";
     else classes += " font-sans";
 
-    // Font Size
     if (fontSize === 'sm') classes += " text-lg md:text-xl";
     else if (fontSize === 'lg') classes += " text-2xl md:text-3xl";
-    else classes += " text-xl md:text-2xl"; // default md
+    else classes += " text-xl md:text-2xl"; 
 
     return classes;
   };
@@ -236,7 +262,6 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
     return '';
   };
 
-  // Scene Entrance Animations
   const getSceneAnimationClass = () => {
       if (!currentScene) return '';
       switch (currentScene.transition) {
@@ -248,15 +273,12 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
 
   const getOverlayClass = () => {
       const transitionType = currentScene?.transition;
-      
       if (transitionType === 'flash') return 'bg-white';
-      if (transitionType === 'slide' || transitionType === 'zoom') return 'bg-black/0'; // Transparent overlay for these, as we animate the content
+      if (transitionType === 'slide' || transitionType === 'zoom') return 'bg-black/0'; 
       if (transitionType === 'none') return 'bg-transparent hidden';
-      
-      return 'bg-black'; // Default fade
+      return 'bg-black'; 
   };
 
-  // Inject styles for animations
   const effectStyles = `
     @keyframes shake {
       0%, 100% { transform: translateX(0); }
@@ -292,6 +314,11 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
     }
     .animate-slide-in-right { animation: slideInRight 0.5s ease-out forwards; }
     .animate-zoom-in { animation: zoomIn 0.8s ease-out forwards; }
+    .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
   `;
 
   if (isFinished) {
@@ -323,7 +350,7 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
 
       {/* Background Layer with Animation Key */}
       <div 
-        key={currentScene.id} // Forces re-render on scene change to trigger CSS animation
+        key={currentScene.id} 
         className={`absolute inset-0 bg-no-repeat transition-all duration-700 ${getSceneAnimationClass()}`}
         style={{ 
             backgroundImage: `url(${currentScene.backgroundUrl})`,
@@ -336,12 +363,12 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
 
       {/* Character Layer */}
       <div className="absolute inset-0 flex items-end justify-center pointer-events-none">
-        {activeCharacter && (
+        {activeCharacter && activeSpriteUrl && (
           <img 
-            src={activeCharacter.avatarUrl} 
+            src={activeSpriteUrl} 
             alt={activeCharacter.name}
             className="h-[80%] object-contain drop-shadow-2xl animate-slide-up transition-all duration-300"
-            key={activeCharacter.id} // Force re-render on char change for animation
+            key={activeSpriteUrl} 
           />
         )}
       </div>
