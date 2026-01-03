@@ -270,8 +270,8 @@ const CreateNovel: React.FC<CreateNovelProps> = ({ onSave, onUpdate, user, initi
   };
 
   const deleteScene = (e: React.MouseEvent, sceneId: string) => {
+    e.stopPropagation(); // CRITICAL: Stop parent click (scene switch)
     e.preventDefault();
-    e.stopPropagation();
     
     if (scenes.length <= 1) {
       alert(t.common.minScenesError);
@@ -279,14 +279,21 @@ const CreateNovel: React.FC<CreateNovelProps> = ({ onSave, onUpdate, user, initi
     }
     
     if (window.confirm(t.common.confirmDeleteScene)) {
+      const deletedIndex = scenes.findIndex(s => s.id === sceneId);
       const newScenes = scenes.filter(s => s.id !== sceneId);
       
       // Safety check
       if (newScenes.length === 0) return;
 
       let newActiveId = activeSceneId;
-      // Robust check for active scene update
-      if (activeSceneId === sceneId || !newScenes.some(s => s.id === activeSceneId)) {
+      
+      // If we deleted the active scene, we must switch to another one
+      if (activeSceneId === sceneId) {
+        // Try to stay at the same index (which is now the next scene), or go to the previous one
+        const newIndex = Math.min(deletedIndex, newScenes.length - 1);
+        newActiveId = newScenes[newIndex].id;
+      } else if (!newScenes.some(s => s.id === activeSceneId)) {
+        // Fallback if somehow active ID is lost
         newActiveId = newScenes[0].id;
       }
       
@@ -800,8 +807,12 @@ const CreateNovel: React.FC<CreateNovelProps> = ({ onSave, onUpdate, user, initi
                           onChange={(e) => {
                               const val = e.target.value;
                               const current = activeScene?.themeOverride || {};
-                              const newTheme = { ...current, fontFamily: val || undefined };
-                              if (!val) delete newTheme.fontFamily;
+                              const newTheme: Partial<NovelTheme> = { ...current };
+                              if (val) {
+                                  newTheme.fontFamily = val as NovelTheme['fontFamily'];
+                              } else {
+                                  delete newTheme.fontFamily;
+                              }
                               updateScene(activeSceneId, { themeOverride: Object.keys(newTheme).length ? newTheme : undefined }, true);
                           }}
                           className="bg-slate-800 text-xs text-slate-300 rounded border border-slate-700 focus:outline-none p-1.5 min-w-[120px]"
@@ -821,8 +832,12 @@ const CreateNovel: React.FC<CreateNovelProps> = ({ onSave, onUpdate, user, initi
                           onChange={(e) => {
                               const val = e.target.value;
                               const current = activeScene?.themeOverride || {};
-                              const newTheme = { ...current, fontSize: val || undefined };
-                              if (!val) delete newTheme.fontSize;
+                              const newTheme: Partial<NovelTheme> = { ...current };
+                              if (val) {
+                                  newTheme.fontSize = val as NovelTheme['fontSize'];
+                              } else {
+                                  delete newTheme.fontSize;
+                              }
                               updateScene(activeSceneId, { themeOverride: Object.keys(newTheme).length ? newTheme : undefined }, true);
                           }}
                           className="bg-slate-800 text-xs text-slate-300 rounded border border-slate-700 focus:outline-none p-1.5"
@@ -914,6 +929,7 @@ const CreateNovel: React.FC<CreateNovelProps> = ({ onSave, onUpdate, user, initi
                  
                  <div className="flex items-center gap-1 opacity-0 group-hover/scene:opacity-100 transition-opacity">
                     <button
+                        type="button"
                         onClick={(e) => {
                             e.stopPropagation();
                             if (activeSceneId !== scene.id) {
@@ -929,6 +945,7 @@ const CreateNovel: React.FC<CreateNovelProps> = ({ onSave, onUpdate, user, initi
                         <StickyNote className="w-3.5 h-3.5" />
                     </button>
                     <button 
+                      type="button"
                       onClick={(e) => deleteScene(e, scene.id)}
                       className="p-1.5 rounded hover:bg-red-500/20 hover:text-red-400 text-slate-500 transition-colors"
                       title={t.tooltips.deleteScene}
