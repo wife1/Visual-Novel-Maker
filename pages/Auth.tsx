@@ -13,12 +13,12 @@ export const Login: React.FC<AuthProps> = ({ onLogin }) => {
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login
+    // Mock login with ID 'a1' to match the first mock novel's author
     onLogin({
-      id: 'u1',
+      id: 'a1', 
       username: email.split('@')[0] || 'User',
       email: email,
-      createdNovels: []
+      createdNovels: ['n1']
     });
     navigate('/');
   };
@@ -89,7 +89,7 @@ export const Register: React.FC<AuthProps> = ({ onLogin }) => {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     onLogin({
-      id: 'u2',
+      id: `u${Date.now()}`,
       username: email.split('@')[0],
       email: email,
       createdNovels: []

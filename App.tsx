@@ -141,8 +141,8 @@ const App: React.FC = () => {
         <Route path="/" element={<Layout user={user} logout={handleLogout} />}>
           <Route index element={<Home novels={novels} />} />
           <Route path="novel/:id" element={<NovelDetail novels={novels} currentUser={user} />} />
-          <Route path="author/:id" element={<AuthorProfile novels={novels} />} />
-          <Route path="profile" element={user ? <AuthorProfile novels={novels} /> : <Navigate to="/login" />} />
+          <Route path="author/:id" element={<AuthorProfile novels={novels} currentUser={user} />} />
+          <Route path="profile" element={user ? <AuthorProfile novels={novels} currentUser={user} /> : <Navigate to="/login" />} />
           
           <Route path="create" element={
             user ? <CreateNovel onSave={handleSaveNovel} user={user} /> : <Navigate to="/login" />

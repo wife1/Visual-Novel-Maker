@@ -15,6 +15,11 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Typewriter State
+  const [displayedText, setDisplayedText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const typingSpeed = 30; // ms per char
+
   // Audio Refs
   const bgmRef = useRef<HTMLAudioElement | null>(null);
   const sfxRef = useRef<HTMLAudioElement | null>(null);
@@ -28,6 +33,31 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
   };
 
   const activeCharacter = getCharacter(currentDialogue?.characterId || null);
+
+  // Typewriter Effect Logic
+  useEffect(() => {
+    if (!currentDialogue) return;
+    
+    // Reset state for new dialogue
+    setDisplayedText('');
+    setIsTyping(true);
+    
+    let index = 0;
+    const fullText = currentDialogue.text;
+    
+    const timer = setInterval(() => {
+        setDisplayedText(current => {
+            if (current.length < fullText.length) {
+                return fullText.slice(0, current.length + 1);
+            }
+            clearInterval(timer);
+            setIsTyping(false);
+            return current;
+        });
+    }, typingSpeed);
+
+    return () => clearInterval(timer);
+  }, [currentDialogue]);
 
   // Audio Logic: BGM
   useEffect(() => {
@@ -101,25 +131,58 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
     };
   }, []);
 
+  const handleChoice = (targetSceneId: string) => {
+    const targetSceneIndex = novel.scenes.findIndex(s => s.id === targetSceneId);
+    if (targetSceneIndex !== -1) {
+        performSceneTransition(targetSceneIndex);
+    }
+  };
+
+  const performSceneTransition = (nextIndex: number) => {
+    // Determine the transition effect for the *next* scene
+    const nextScene = novel.scenes[nextIndex];
+    const effect = nextScene.transition || 'fade';
+
+    setIsTransitioning(true);
+    
+    let delay = 500;
+    // Faster switch for slide/zoom to allow animation to play
+    if (effect === 'slide' || effect === 'zoom') {
+        delay = 100;
+    } else if (effect === 'none') {
+        delay = 50;
+    }
+
+    setTimeout(() => {
+      setCurrentSceneIndex(nextIndex);
+      setCurrentDialogueIndex(0);
+      
+      // Brief delay before fading overlay out
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, effect === 'none' ? 0 : 100);
+    }, delay);
+  };
+
   const advance = () => {
     if (!currentScene || isTransitioning) return;
+
+    // Handle Typewriter skip
+    if (isTyping && currentDialogue) {
+        setDisplayedText(currentDialogue.text);
+        setIsTyping(false);
+        return;
+    }
+    
+    // Do not advance if there are choices pending
+    if (currentDialogue?.choices && currentDialogue.choices.length > 0) {
+        return;
+    }
 
     if (currentDialogueIndex < currentScene.dialogues.length - 1) {
       setCurrentDialogueIndex(prev => prev + 1);
     } else if (currentSceneIndex < novel.scenes.length - 1) {
-      // Start Scene Transition
-      setIsTransitioning(true);
-      
-      // Duration of fade out
-      setTimeout(() => {
-        setCurrentSceneIndex(prev => prev + 1);
-        setCurrentDialogueIndex(0);
-        
-        // Brief delay before fading in to ensure render
-        setTimeout(() => {
-          setIsTransitioning(false);
-        }, 100);
-      }, 500);
+      performSceneTransition(currentSceneIndex + 1);
     } else {
       setIsFinished(true);
     }
@@ -128,29 +191,108 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === 'Space' || e.code === 'Enter') {
+        // Prevent accidental advancement if choices are present
+        if (currentDialogue?.choices && currentDialogue.choices.length > 0 && !isTyping) {
+            return;
+        }
         advance();
       }
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [currentSceneIndex, currentDialogueIndex, isTransitioning]);
+  }, [currentSceneIndex, currentDialogueIndex, isTransitioning, isTyping, displayedText]);
 
   const getThemeClasses = () => {
-    const theme = novel.theme;
+    const globalTheme = novel.theme;
+    const sceneTheme = currentScene?.themeOverride;
+    
+    // Prefer scene override, then global, then default
+    const fontFamily = sceneTheme?.fontFamily || globalTheme?.fontFamily;
+    const fontSize = sceneTheme?.fontSize || globalTheme?.fontSize;
+
     let classes = "";
     
     // Font Family
-    if (theme?.fontFamily === 'serif') classes += " font-serif";
-    else if (theme?.fontFamily === 'mono') classes += " font-mono";
+    if (fontFamily === 'serif') classes += " font-serif";
+    else if (fontFamily === 'mono') classes += " font-mono";
+    else if (fontFamily === 'handwritten') classes += " font-handwritten";
+    else if (fontFamily === 'retro') classes += " font-retro";
+    else if (fontFamily === 'futuristic') classes += " font-futuristic";
+    else if (fontFamily === 'readable') classes += " font-readable";
     else classes += " font-sans";
 
     // Font Size
-    if (theme?.fontSize === 'sm') classes += " text-lg md:text-xl";
-    else if (theme?.fontSize === 'lg') classes += " text-2xl md:text-3xl";
+    if (fontSize === 'sm') classes += " text-lg md:text-xl";
+    else if (fontSize === 'lg') classes += " text-2xl md:text-3xl";
     else classes += " text-xl md:text-2xl"; // default md
 
     return classes;
   };
+
+  const getEffectClass = (effect?: string) => {
+    if (effect === 'shake') return 'vn-effect-shake';
+    if (effect === 'flash') return 'vn-effect-flash';
+    if (effect === 'rainbow') return 'vn-effect-rainbow';
+    return '';
+  };
+
+  // Scene Entrance Animations
+  const getSceneAnimationClass = () => {
+      if (!currentScene) return '';
+      switch (currentScene.transition) {
+          case 'slide': return 'animate-slide-in-right';
+          case 'zoom': return 'animate-zoom-in';
+          default: return '';
+      }
+  };
+
+  const getOverlayClass = () => {
+      const transitionType = currentScene?.transition;
+      
+      if (transitionType === 'flash') return 'bg-white';
+      if (transitionType === 'slide' || transitionType === 'zoom') return 'bg-black/0'; // Transparent overlay for these, as we animate the content
+      if (transitionType === 'none') return 'bg-transparent hidden';
+      
+      return 'bg-black'; // Default fade
+  };
+
+  // Inject styles for animations
+  const effectStyles = `
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px) rotate(-1deg); }
+      75% { transform: translateX(2px) rotate(1deg); }
+    }
+    @keyframes flash {
+      0%, 50%, 100% { opacity: 1; }
+      25%, 75% { opacity: 0.5; }
+    }
+    @keyframes rainbow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+    @keyframes zoomIn {
+      from { transform: scale(1.2); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .vn-effect-shake { animation: shake 0.4s infinite; display: inline-block; }
+    .vn-effect-flash { animation: flash 0.2s infinite; }
+    .vn-effect-rainbow {
+      background: linear-gradient(270deg, #ff5e5e, #ffff5e, #5eff5e, #5effff, #5e5eff, #ff5eff);
+      background-size: 400% 400%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: rainbow 4s ease infinite;
+    }
+    .animate-slide-in-right { animation: slideInRight 0.5s ease-out forwards; }
+    .animate-zoom-in { animation: zoomIn 0.8s ease-out forwards; }
+  `;
 
   if (isFinished) {
     return (
@@ -177,10 +319,17 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black overflow-hidden select-none">
-      {/* Background Layer */}
+      <style>{effectStyles}</style>
+
+      {/* Background Layer with Animation Key */}
       <div 
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700"
-        style={{ backgroundImage: `url(${currentScene.backgroundUrl})` }}
+        key={currentScene.id} // Forces re-render on scene change to trigger CSS animation
+        className={`absolute inset-0 bg-no-repeat transition-all duration-700 ${getSceneAnimationClass()}`}
+        style={{ 
+            backgroundImage: `url(${currentScene.backgroundUrl})`,
+            backgroundSize: currentScene.backgroundSize === 'stretch' ? '100% 100%' : (currentScene.backgroundSize || 'cover'),
+            backgroundPosition: currentScene.backgroundPosition || 'center'
+        }}
       >
         <div className="absolute inset-0 bg-black/30" />
       </div>
@@ -199,8 +348,23 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
 
       {/* Transition Overlay */}
       <div 
-        className={`absolute inset-0 bg-black transition-opacity duration-500 ease-in-out pointer-events-none ${isTransitioning ? 'opacity-100 z-[60]' : 'opacity-0 z-[-1]'}`} 
+        className={`absolute inset-0 transition-opacity duration-500 ease-in-out pointer-events-none ${getOverlayClass()} ${isTransitioning ? 'opacity-100 z-[60]' : 'opacity-0 z-[-1]'}`} 
       />
+
+      {/* Choices Overlay */}
+      {!isTyping && currentDialogue?.choices && currentDialogue.choices.length > 0 && (
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+              {currentDialogue.choices.map((choice) => (
+                  <button
+                    key={choice.id}
+                    onClick={() => handleChoice(choice.targetSceneId)}
+                    className="bg-white/90 hover:bg-white text-slate-900 font-bold py-3 px-8 rounded-lg min-w-[300px] shadow-lg transform hover:scale-105 transition-all"
+                  >
+                      {choice.text}
+                  </button>
+              ))}
+          </div>
+      )}
 
       {/* UI Layer */}
       <div className="absolute inset-0 flex flex-col justify-between p-4 md:p-8">
@@ -250,15 +414,20 @@ const VisualNovelPlayer: React.FC<PlayerProps> = ({ novel, onClose }) => {
              </div>
 
              {/* Dialogue Text */}
-             <p className={`leading-relaxed text-slate-100 font-medium mt-2 ${getThemeClasses()}`}>
-               {currentDialogue?.text}
-               <span className="inline-block w-2 h-5 bg-white ml-2 animate-pulse" />
+             <p 
+                className={`leading-relaxed font-medium mt-2 ${getThemeClasses()} ${getEffectClass(currentDialogue?.textEffect)}`}
+                style={{ color: activeCharacter ? activeCharacter.color : '#f1f5f9' }}
+             >
+               {displayedText}
+               {!isTyping && <span className="inline-block w-2 h-5 bg-white ml-2 animate-pulse" />}
              </p>
 
              {/* Advance Indicator */}
-             <div className="absolute bottom-4 right-4 text-slate-500 text-sm flex items-center gap-1 group-hover:text-indigo-400 transition-colors">
-               Click or Space to continue <SkipForward className="w-4 h-4" />
-             </div>
+             {!isTyping && (!currentDialogue?.choices || currentDialogue.choices.length === 0) && (
+                 <div className="absolute bottom-4 right-4 text-slate-500 text-sm flex items-center gap-1 group-hover:text-indigo-400 transition-colors animate-bounce">
+                   Click or Space to continue <SkipForward className="w-4 h-4" />
+                 </div>
+             )}
           </div>
         </div>
       </div>

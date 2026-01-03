@@ -14,12 +14,20 @@ export interface Character {
   avatarUrl: string; // Default sprite
 }
 
+export interface Choice {
+  id: string;
+  text: string;
+  targetSceneId: string; // The ID of the scene to jump to
+}
+
 export interface Dialogue {
   id: string;
   characterId: string | null; // null for narrator
   text: string;
   expression?: string; // e.g., 'happy', 'sad'
   audioUrl?: string; // Voice acting or SFX for this line
+  textEffect?: 'shake' | 'flash' | 'rainbow';
+  choices?: Choice[]; // Optional branching paths
 }
 
 export interface Scene {
@@ -27,11 +35,15 @@ export interface Scene {
   name: string;
   backgroundUrl: string;
   bgmUrl?: string; // Background music URL
+  backgroundSize?: 'cover' | 'contain' | 'stretch';
+  backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
+  transition?: 'fade' | 'flash' | 'slide' | 'zoom' | 'none'; // Effect when entering this scene
+  themeOverride?: Partial<NovelTheme>; // Overrides global novel theme for this scene
   dialogues: Dialogue[];
 }
 
 export interface NovelTheme {
-  fontFamily: 'sans' | 'serif' | 'mono';
+  fontFamily: 'sans' | 'serif' | 'mono' | 'handwritten' | 'retro' | 'futuristic' | 'readable';
   fontSize: 'sm' | 'md' | 'lg';
 }
 
