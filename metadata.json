@@ -1,0 +1,5 @@
+{
+  "name": "AffinityWeb - Visual Novel Maker",
+  "description": "A web-based visual novel creation platform inspired by Affinity Engine. Create, play, and share interactive stories directly in your browser with AI-powered assistance.",
+  "requestFramePermissions": []
+}
